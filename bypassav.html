@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Bypassing AV</title>
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+	<header>
+		<div id="nav-container"></div>
+	</header>
+
+	<main>
+		<section id="section-content"></section>
+
+		<section class="content post">
+			<div class="post-category">
+				<span class="post-cat offensive">Offensive</span>
+			</div>
+
+			<h2>Disclaimer</h2>
+			<p>This article and related links are for educational purposes only!</p>
+			<p>Using malicious software to disrupt systems without proper authorization is illegal and unethical.</p>
+			<br />
+
+			<h2>Introduction</h2>
+			<p>I was reading an article online about Shamoon, when I thought to myself: Why try not to create a wiper?</p>
+			<p>I knew from the beginning that I wasn't going to create something sophisticated.</p>
+			<p>I just wanted to see if I was capable of creating something of that kind.<br />But most importantly, try to go undetected when testing it against AV software.</p>
+			<br />
+
+			<h2>Functionalities</h2>
+			<p>I had to think about what functionalities I wanted the wiper to have.</p>
+			<p>I decided that I was only going to destroy files and folders present in the C:\Users\ directory.<br />Enumerate each folder recursively, and if there is any file, overwrite a portion of it and then delete it.<br />I also wrote a function to wipe the MBR, but in the end, to bypass Windows Defender, I decided to remove it.</p>
+			<br />
+
+			<p>I didn't implement any fancy way of destroying or overwriting files.<br />The wiper simply overwrites a portion of each file using the Windows API call WriteFile,<br /> which is also not a good way to go undetected to the eyes of AV software.</p>
+			<p>As a matter of fact, when I tried to compile it and execute it for the first time, Windows Defender detected it and removed it.</p>
+			<p>I had to improve the program, if I wanted to be able to bypass AV software.</p>
+			<br />
+
+			<h2>Samples</h2>
+			<p>I then uploaded the first sample of it on VirusTotal, and found it strange how it was only being detected by 5 vendors.<br /> As the days went by, the detections kept increasing, going even up to 40+ after a few days.<br />The first sample I uploaded can be found <a href="https://www.virustotal.com/gui/file/76ccce8dd3e4da798b049218bb862285780f8cac8f725ffd91b452812de57ec1" target="_blank" rel="noopener">Here</a> (The image shows another sample I uploaded some time later).</p>
+			<img src="img/BypassAV/Sample.png" alt="Another sample I later uploaded to VirusTotal" width="768" loading="lazy" decoding="async">
+
+			<p>The first sample after overwriting the MBR also shuts down the machine using the system() function.<br />This makes the executable more suspicious to the eyes of AV engines, so I decided to remove that part.</p>
+
+			<p>Looking at the few detections the executable got on VirusTotal (at least in the beginning), I started to wonder: can it really bypass some AVs?</p>
+			<br />
+
+			<h2>Testing</h2>
+			<p>Since Windows Defender detected it very quickly, I decided to first do a few tests with another AV software.</p>
+			<p>I tested the wiper against Avast. I installed the free version, and then I executed the wiper.</p>
+			<p>Avast analyzes it and, incredibly, the wiper is executed!</p>
+			<img src="img/BypassAV/Avast1.png" alt="Avast analyzing the wiper" width="768" loading="lazy" decoding="async">
+			<p>We can now see that a few folders in the Downloads and the Desktop directory disappeared.<br />Only after overwriting the MBR, Avast understands that something bad is happening, and asks us to restart the machine, so that it can quarantine the program.<br /> But the MBR is wiped by now, and even if we restart, as Avast asks us to do, the system will become unbootable.</p>
+			<img src="img/BypassAV/Avast2.png" alt="Avast understands something is wrong" width="768" loading="lazy" decoding="async">
+			<br />
+
+			<img src="img/BypassAV/OS.png" alt="MBR wiped" width="768" loading="lazy" decoding="async">
+
+			<h2>What if...</h2>
+			<p>To be honest, I wanted the malware to not be detected, but Avast caught it after overwriting the MBR...<br /> One thing that seemed to work was to remove the WipeMBR functionality.<br />The files and directories will still be removed, but now no warning is ever given to us by Avast about the fact that the software is doing something malicious.</p>
+			<br />
+
+			<p>Next, as I was preparing for stronger opponents, like Windows Defender, I also did something that I thought could help, although it's something very simple: Adding useless functions and calling them.</p>
+			<p>I added a few functions that perform math operations for a little bit, hoping that Avast would think that the program is safe to run.</p>
+			<p>Apparently it worked. Avast analyzed the program, found nothing, and the executable ran without any problem whatsoever.</p>
+			<br />
+
+			<h2>Another test</h2>
+			<p>This is another test I did. I added print statements, and after compiling, I used the strip command, and then transferred the file to the virtual machine.<br />I had to click on 'Run anyway' to run the program (I executed it with Administrator Privileges):</p>
+			<img src="img/BypassAV/Unrecognized.png" alt="Another test" width="768" loading="lazy" decoding="async">
+			<br />
+			<img src="img/BypassAV/AvastAnalyzing1.png" alt="Avast analyzing the program" width="768" loading="lazy" decoding="async">
+			<p>Avast doesn't find anything suspicious, and the malware is executed.</p>
+			<img src="img/BypassAV/WiperStarted.png" alt="The wiper is executing" width="768" loading="lazy" decoding="async">
+			<p>The wiper starts to delete files and folders</p>
+			<img src="img/BypassAV/DeletingFiles.png" alt="Deleting files and folders" width="768" loading="lazy" decoding="async">
+			<p>At this point the wiper did its job.</p>
+			<img src="img/BypassAV/Completed.png" alt="Wiper finished executing" width="768" loading="lazy" decoding="async">
+			<p>A few seconds after completing, Avast suddenly wakes up, removes the executable, and...</p>
+			<img src="img/BypassAV/Detection.png" alt="Strange detection" width="768" loading="lazy" decoding="async">
+			<p>Avast thinks that the program could be malicious, but it can't determine what type of malware it could be.<br />This time it didn't even ask us to restart the machine.</p>
+			<p>Funnily enough, I then uploaded the same sample on VirusTotal, and Avast detects it. But not as a wiper. But hey, at least it detects it.</p>
+			<p>I suppose Avast uploaded the executable on their servers, performed some type of analysis there, and classified it as a potentially malicious program, since in the previous attempts, Avast didn't detect it at all on VirusTotal.</p>
+			<img src="img/BypassAV/LastAnalysis.png" alt="Uploaded sample" width="768" loading="lazy" decoding="async">
+			<br />
+
+			<h2>What now?</h2>
+			<p>Well, since I only added a few useless functions, hoping that the AV wouldn't detect the wiper, from here on, we can look at new things.<br /> From obfuscating the malware, resolving API calls dynamically, increasing the size of the executable, and so on.</p>
+			<p>We can try and do that, and see if Windows Defender detects it. Remember that this can also work for other types of malware!</p>
+			<br />
+
+			<h2>The final test</h2>
+			<p>At the same time I was doing these tests, I was also reading about API hashing.<br /> I removed the MBR wiping function, implemented API hashing, and increased the size of the executable to 260 MBs.<br />Let's see if Windows Defender detects it.</p>
+			<p>I first wanted to write a simple test, to make sure I understood how API hashing works: </p>
+			<img src="img/BypassAV/ShellcodeViaAPIHashing.png" alt="Testing API hashing" width="768" loading="lazy" decoding="async">
+			<br />
+
+			<p>It works. Now let's do it for the wiper.</p>
+			<p>After compilation, I used strip to remove all symbols, and then I added 260 MBs of space at the end of the executable using a file I created, called 4-ModFile.c.</p>
+			<p>I made sure that Defender was active, and downloaded the file.</p>
+			<img src="img/BypassAV/DefenderActive.png" alt="Defender is active" width="768" loading="lazy" decoding="async">
+			<p>I also made sure no exclusion was added.</p>
+			<img src="img/BypassAV/NoExclusions.png" alt="No exclusions" width="768" loading="lazy" decoding="async">
+			<p>I then executed the program. Mind you, this time Windows doesn't think it's malicious.</p>
+			<img src="img/BypassAV/Starting.png" alt="Starting the new wiper" width="768" loading="lazy" decoding="async">
+			<p>Here we can see that the wiper started deleting files, and by now most of them are gone.</p>
+			<img src="img/BypassAV/FilesGettingDeleted.png" alt="Folders are wiped" width="768" loading="lazy" decoding="async">
+			<p>Everything worked successfully!</p>
+			<img src="img/BypassAV/WiperExecutedSuccessfully.png" alt="Success" width="768" loading="lazy" decoding="async">
+
+			<p>I also tried to make Windows Defender analyze the executable, but it didn't find anything.</p>
+			<p>Yeah.. I guess we finally bypassed Windows Defender successfully!</p>
+			<img src="img/BypassAV/NoThreatDetected.png" alt="No threat detected" width="768" loading="lazy" decoding="async">
+			<p>As a last resort, I uploaded the sample on VirusTotal: <a href="https://www.virustotal.com/gui/file/c647c2c86445c873fd8269a28b1623f6fdf91d61ecaf61511c82d1dfddc427a9" target="_blank" rel="noopener">Sample</a></p>
+			<p>Some of them detect it as a file that has an increased size purposefully, but they don't seem to prioritize the fact that the program deletes a lot of files (this can be seen in the Behavior tab).</p>
+			<img src="img/BypassAV/VirusTotalResults.png" alt="VirusTotal detection results for the final sample" width="768" loading="lazy" decoding="async">
+			<br />
+
+			<h2>Results</h2>
+			<p>My main objective was to bypass Windows Defender.</p>
+			<br />
+			<p>At first I couldn't, but after modifying the program, implementing little changes over time, we managed to bypass Avast. Only then, I realized that bypassing Windows Defender involves a lot more work.<br />By implementing various techniques, I successfully achieved my objective!</p>
+			<p>Although there is already malware with similar (and far more advanced) capabilities, writing things for yourself really makes you understand how things work, and how many ways there are to achieve a final objective.</p>
+			<p>By reinventing the wheel, your knowledge increases, and you will also understand the do's and dont's when trying to write malware that can accomplish different things, like, for example, bypassing AV software.</p>
+			<p>Being able to create things by yourself is a must if you want to become a good red teamer, since most public stuff is already well known, and the IOCs are well documented as well.</p>
+			<p>The results I showed here will of course change in the future, as AV signatures and AV engines are constantly updated and improved.</p>
+
+			<h2>The Repository</h2>
+			<p>Down below, at the end of this post, there is a link to a repository I'm working on, where code for the Wiper and 4-ModFile.c are also included, along with other files.</p>
+			<p>The repository contains some concepts intended for experimenting with antivirus evasion techniques. However, those files require modification before they could become effective.</p>
+			<p>Thanks for reading!</p>
+
+			<footer class="post-footer">
+				<a href="index.html">← Home</a> · <a href="https://github.com/IvanT7D3/BypassAV" target="_blank" rel="noopener">Project repo</a>
+			</footer>
+		</section>
+	</main>
+
+	<script src="js/main.js"></script>
+</body>
+</html>

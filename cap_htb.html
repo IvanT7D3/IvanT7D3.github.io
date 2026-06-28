@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>HTB - Cap</title>
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+	<header>
+		<div id="nav-container"></div>
+	</header>
+
+	<main>
+		<section id="section-content"></section>
+
+		<section class="content post">
+			<div class="post-category">
+				<span class="post-cat writeups">Writeups</span>
+			</div>
+
+			<h2>HackTheBox - Cap</h2>
+			<p>This challenge can be found on HackTheBox's website. The difficulty is set to easy, and the OS is Linux.</p>
+			<p>After starting the machine, connecting to the VPN and pinging the machine, we can start with enumeration</p>
+			<img src="img/HTB/Cap/1-Ping.png" alt="Ping reply from the target host" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>After noticing we can ping the machine, I ran the following 2 commands to find all the open ports on the target</p>
+			<p>Generally, I use these commands, so that the chances of missing open ports on higher numbers are less likely:</p>
+			<div class="container-wrap"><p>nmap -sC -sV 10.129.46.113 -vv && rustscan -a 10.129.46.113 --range 1-65535 -- -sC -sV -vv</p></div>
+			<br />
+			<p>The open ports are 21 (FTP), 22 (SSH) and 80 (HTTP)</p>
+			<img src="img/HTB/Cap/2-Services.png" alt="Open ports" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>Since FTP is open, even though anonymous login appears to be disabled, I still gave it a try, but without success.</p>
+			<p>Next, since I don't have any credentials, I visited port 80:</p>
+			<img src="img/HTB/Cap/3-Port80.png" alt="Port 80" width="768" loading="lazy" decoding="async">
+			<p>We appear to be a user called Nathan as we can see on the top-right. Something to keep note of, as it could indicate a valid username.</p>
+			<p>By looking at the panel on the left, we can click on the Security Snapshot, which loads the following page, where we can download a .pcap file:</p>
+			<img src="img/HTB/Cap/4-Snapshots.png" alt="Snapshots page" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>If we look at the URL, we can see that we are at URI /data/1.</p>
+			<p>If we try to click the Download button, we can download an empty .pcap file</p>
+			<p>By changing the URI from '/data/1' to '/data/0', we can access another web page that allows us to download a different .pcap file:</p>
+			<img src="img/HTB/Cap/5-IDOR.png" alt="IDOR" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>This is a very simple IDOR vulnerability, since we're able to access a file that contains sensitive information that maybe our user shouldn't have been able to access.</p>
+			<p>We can now open the downloaded file with Wireshark, and search for all communications</p>
+			<p>By going to Statistics→Conversations→Tcp, we can see the IPs and ports that communicated, and we can see that FTP and HTTP traffic were captured. Since both protocols are unencrypted, maybe a user logged in to the FTP service, and it's likely that we could find some credentials to use</p>
+			<img src="img/HTB/Cap/6-WiresharkCommunications.png" alt="Communications" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>If we look around inside of the file, we can actually find plaintext FTP credentials, and we can use them to successfully log in to FTP</p>
+			<img src="img/HTB/Cap/7-FTPCredentials.png" alt="FTP Credentials found" width="768" loading="lazy" decoding="async">
+			<br />
+			<img src="img/HTB/Cap/8-FTPConnection.png" alt="FTP connection successful" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>We can now obtain the user.txt file using the get command through FTP. However, we can also try to login with the same credentials on SSH</p>
+			<img src="img/HTB/Cap/9-SSH.png" alt="SSH connection successful" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>Now that we are inside of the machine, we can now look for a way to perform privilege escalation</p>
+
+			<h2>Privilege Escalation</h2>
+			<p>After downloading linpeas from Github to our attacker machine, we can use python's http.server module to create a simple HTTP server to make the script available for download from the machine we're trying to root:</p>
+			<div class="container-wrap"><p>python3 -m http.server 80</p></div>
+			<br />
+			<p>And then we can download the script using wget</p>
+			<img src="img/HTB/Cap/10-DownloadingLinpeas.png" alt="Downloading linpeas from our attacker machine to the CTF machine" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>We can now add the executable permission to linpeas using chmod +x, and then we can execute the script</p>
+			<p>After linpeas finished executing and we start reading what it found, we can see that it found that python3.8 has the cap_setuid capability enabled, which allows us to spawn a shell as root</p>
+			<img src="img/HTB/Cap/11-Capabilities.png" alt="Programs with capabilities" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>Linpeas found that python3.8 has the cap_setuid capability. This means that we can easily become root</p>
+			<p>You can read more about capabilities <a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener"> here</a></p>
+			<p>The main problem, is that a process with the cap_setuid capability, allows that specific process to manipulate the process UIDs, using setuid(), setreuid() etc, allowing you to essentially become any other user you want, like becoming root for example</p>
+			<p>Since this capability is set on the python interpreter, we already had the possibility to run whatever code we wanted. But now, with the cap_setuid capability set, we can run code within the context of any user, and essentially become root by changing our UID!</p>
+			<p>A quick way to check for common privilege escalation vectors, present in some well-known executables, is to visit <a href="https://gtfobins.org" target="_blank" rel="noopener">GTFOBins.org</a>, and search for the executables that we think to be vulnerable to some attacks. In this case, python3.8, and then look at common ways to perform privilege escalation through the executable</p>
+			<img src="img/HTB/Cap/12-GtfobinsExplanation.png" alt="GTFOBins Python Capabilities" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>Simply copy, paste, and change the executable's name from python to python3.8, launch the command, and now that we are root, we can obtain the root flag.</p>
+			<img src="img/HTB/Cap/13-Privesc.png" alt="Privilege escalation successful" width="768" loading="lazy" decoding="async">
+			<br />
+			<p>If you don't want to copy-paste the pre-made command, you can simply call python3.8, import the os library, use os.setuid(0) to set the user ID to root, and then you can execute other commands using os.system() </p>
+			<img src="img/HTB/Cap/14-PythonManualPrivEsc.png" alt="Manual privilege escalation" width="768" loading="lazy" decoding="async">
+			<br />
+
+			<footer class="post-footer">
+				<a href="index.html">← Home</a> · <a href="https://app.hackthebox.com/machines/Cap" target="_blank" rel="noopener">HTB machine</a>
+			</footer>
+		</section>
+	</main>
+
+	<script src="js/main.js"></script>
+</body>
+</html>
